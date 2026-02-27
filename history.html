@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>📋 Signal History — Nifty Intra Scanner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --navy-1:   #0d1b2a; --navy-2: #1a3d5c; --navy-3: #24527a; --steel: #4682B4;
+  --steel-lt: #5b9bd5; --gold: #f5c842; --gold-dk: #c9a200;
+  --green: #22c55e; --green-dk: #16a34a; --red: #ef4444; --red-dk: #dc2626;
+  --amber: #f59e0b; --text: #e2eaf4; --text-dim: #8ba9c7;
+  --glass: rgba(255,255,255,0.055); --glass-b: rgba(255,255,255,0.12);
+  --border: rgba(255,255,255,0.10); --shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+body {
+  font-family:'DM Sans',sans-serif; background:var(--navy-1); color:var(--text);
+  min-height:100vh;
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(70,130,180,0.18), transparent),
+    radial-gradient(ellipse 60% 40% at 80% 80%, rgba(26,61,92,0.3), transparent);
+}
+
+/* Header */
+.header {
+  background:linear-gradient(135deg, var(--navy-2) 0%, var(--navy-3) 60%, var(--steel) 100%);
+  border-bottom:1px solid var(--border); padding:0 24px; position:sticky; top:0; z-index:100;
+  box-shadow:0 4px 24px rgba(0,0,0,0.5);
+}
+.header-inner {
+  max-width:1600px; margin:0 auto; display:flex; align-items:center;
+  justify-content:space-between; padding:14px 0;
+}
+.brand-title { font-size:1.25rem; font-weight:700; }
+.brand-sub   { font-size:0.7rem; color:var(--text-dim); font-family:'Space Mono',monospace; margin-top:2px; }
+.btn { padding:8px 16px; border-radius:8px; border:none; cursor:pointer;
+  font-family:'DM Sans',sans-serif; font-weight:600; font-size:0.82rem; transition:all 0.18s; }
+.btn-primary { background:linear-gradient(135deg,var(--steel),var(--steel-lt)); color:#fff; }
+.btn-ghost { background:var(--glass); border:1px solid var(--border); color:var(--text-dim); }
+.btn-ghost:hover { background:var(--glass-b); color:var(--text); }
+.btn-danger { background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); color:var(--red); }
+.header-actions { display:flex; gap:10px; align-items:center; }
+.url-input {
+  background:rgba(0,0,0,0.3); border:1px solid var(--border);
+  border-radius:8px; padding:7px 12px; color:var(--text);
+  font-family:'Space Mono',monospace; font-size:0.7rem; width:280px;
+}
+
+/* Stats bar */
+.stats-bar {
+  background:rgba(0,0,0,0.2); border-bottom:1px solid var(--border);
+  padding:14px 24px;
+}
+.stats-inner { max-width:1600px; margin:0 auto; display:flex; gap:20px; flex-wrap:wrap; }
+.stat-card {
+  background:var(--glass); border:1px solid var(--border); border-radius:10px;
+  padding:12px 20px; display:flex; flex-direction:column; gap:4px; min-width:120px;
+}
+.stat-label { font-size:0.62rem; color:var(--text-dim); letter-spacing:0.08em; font-family:'Space Mono',monospace; }
+.stat-val   { font-size:1.4rem; font-weight:700; font-family:'Space Mono',monospace; }
+.stat-val.green { color:var(--green); } .stat-val.red { color:var(--red); }
+.stat-val.gold  { color:var(--gold); } .stat-val.blue { color:var(--steel-lt); }
+
+/* Filters */
+.filters {
+  background:var(--glass); border-bottom:1px solid var(--border); padding:12px 24px;
+}
+.filters-inner {
+  max-width:1600px; margin:0 auto; display:flex; gap:10px; flex-wrap:wrap; align-items:center;
+}
+.filter-select {
+  background:rgba(0,0,0,0.3); border:1px solid var(--border); border-radius:7px;
+  padding:7px 12px; color:var(--text); font-size:0.78rem; cursor:pointer;
+}
+.filter-input {
+  background:rgba(0,0,0,0.3); border:1px solid var(--border); border-radius:7px;
+  padding:7px 12px; color:var(--text); font-size:0.78rem; width:140px;
+}
+.filter-label { font-size:0.72rem; color:var(--text-dim); }
+
+/* Table container */
+.table-wrap { max-width:1600px; margin:0 auto; padding:20px 24px; overflow-x:auto; }
+table { width:100%; border-collapse:collapse; font-size:0.78rem; }
+thead th {
+  background:rgba(0,0,0,0.3); padding:10px 12px; text-align:left;
+  font-size:0.62rem; letter-spacing:0.08em; color:var(--text-dim); font-family:'Space Mono',monospace;
+  border-bottom:1px solid var(--border); white-space:nowrap;
+}
+tbody tr {
+  border-bottom:1px solid rgba(255,255,255,0.05); transition:background 0.15s;
+}
+tbody tr:hover { background:rgba(255,255,255,0.04); }
+tbody td { padding:10px 12px; vertical-align:middle; white-space:nowrap; }
+
+/* Row colours */
+tbody tr.target { border-left:3px solid var(--green); }
+tbody tr.sl_hit  { border-left:3px solid var(--red); }
+tbody tr.watching{ border-left:3px solid var(--amber); }
+tbody tr.pending { border-left:3px solid rgba(255,255,255,0.2); }
+
+/* Badges */
+.badge {
+  display:inline-block; padding:2px 8px; border-radius:4px;
+  font-size:0.65rem; font-family:'Space Mono',monospace; font-weight:700;
+}
+.badge.buy     { background:rgba(34,197,94,0.2);  color:var(--green); }
+.badge.sell    { background:rgba(239,68,68,0.2);  color:var(--red); }
+.badge.a-high  { background:linear-gradient(135deg,var(--gold-dk),var(--gold)); color:var(--navy-1); }
+.badge.a-med   { background:linear-gradient(135deg,var(--steel),var(--steel-lt)); color:#fff; }
+.badge.target  { background:rgba(34,197,94,0.2);  color:var(--green); }
+.badge.sl      { background:rgba(239,68,68,0.2);  color:var(--red); }
+.badge.watch   { background:rgba(245,158,11,0.2); color:var(--amber); }
+.badge.pending { background:rgba(255,255,255,0.08); color:var(--text-dim); }
+
+.rescan-btn {
+  padding:4px 10px; border-radius:5px; border:1px solid rgba(70,130,180,0.3);
+  background:rgba(70,130,180,0.1); color:var(--steel-lt); cursor:pointer;
+  font-size:0.68rem; font-family:'Space Mono',monospace; transition:all 0.15s;
+}
+.rescan-btn:hover { background:rgba(70,130,180,0.25); }
+.rescan-btn:disabled { opacity:0.4; cursor:not-allowed; }
+
+.mono { font-family:'Space Mono',monospace; }
+.empty-msg { text-align:center; padding:60px; color:var(--text-dim); }
+
+/* Notification */
+.toast {
+  position:fixed; bottom:24px; right:24px; background:var(--navy-3);
+  border:1px solid var(--border); border-radius:10px; padding:12px 20px;
+  font-size:0.82rem; z-index:999; box-shadow:var(--shadow);
+  transform:translateY(80px); opacity:0; transition:all 0.3s;
+}
+.toast.show { transform:translateY(0); opacity:1; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <div class="header-inner">
+    <div>
+      <div class="brand-title">📋 Signal History & Track Record</div>
+      <div class="brand-sub">⚡ Nifty Intra Scanner — All Signals</div>
+    </div>
+    <div class="header-actions">
+      <input class="url-input" type="text" id="renderUrl"
+        value="https://quant-index-intraday-scanner.onrender.com"
+        placeholder="Render backend URL"/>
+      <button class="btn btn-primary"  onclick="rescandAll()">⟳ Rescan All</button>
+      <button class="btn btn-ghost"    onclick="exportCSV()">⬇ CSV</button>
+      <button class="btn btn-danger"   onclick="clearHistory()">🗑 Clear</button>
+      <a href="index.html" style="color:var(--steel-lt);text-decoration:none;font-size:0.82rem;padding:8px 14px;border:1px solid rgba(70,130,180,0.3);border-radius:8px;">← Scanner</a>
+    </div>
+  </div>
+</header>
+
+<!-- Stats -->
+<div class="stats-bar">
+  <div class="stats-inner">
+    <div class="stat-card"><div class="stat-label">TOTAL SIGNALS</div><div class="stat-val blue" id="statTotal">0</div></div>
+    <div class="stat-card"><div class="stat-label">TARGET HIT</div><div class="stat-val green" id="statTarget">0</div></div>
+    <div class="stat-card"><div class="stat-label">SL HIT</div><div class="stat-val red" id="statSL">0</div></div>
+    <div class="stat-card"><div class="stat-label">WIN RATE</div><div class="stat-val gold" id="statWR">—</div></div>
+    <div class="stat-card"><div class="stat-label">AVG P&L %</div><div class="stat-val" id="statPnl">—</div></div>
+    <div class="stat-card"><div class="stat-label">WATCHING</div><div class="stat-val" style="color:var(--amber)" id="statWatch">0</div></div>
+    <div class="stat-card"><div class="stat-label">PENDING</div><div class="stat-val" style="color:var(--text-dim)" id="statPending">0</div></div>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="filters">
+  <div class="filters-inner">
+    <span class="filter-label">Filter:</span>
+    <select class="filter-select" id="fDir" onchange="applyFilters()">
+      <option value="">All Directions</option>
+      <option value="BUY">BUY</option>
+      <option value="SELL">SELL</option>
+    </select>
+    <select class="filter-select" id="fIndex" onchange="applyFilters()">
+      <option value="">All Indices</option>
+      <option value="NIFTY">NIFTY</option>
+      <option value="BANKNIFTY">BANKNIFTY</option>
+    </select>
+    <select class="filter-select" id="fGrade" onchange="applyFilters()">
+      <option value="">All Grades</option>
+      <option value="A+ HIGH">A+ HIGH</option>
+      <option value="A+ MEDIUM">A+ MEDIUM</option>
+    </select>
+    <select class="filter-select" id="fOutcome" onchange="applyFilters()">
+      <option value="">All Outcomes</option>
+      <option value="TARGET_HIT">Target Hit</option>
+      <option value="SL_HIT">SL Hit</option>
+      <option value="WATCHING">Watching</option>
+      <option value="PENDING">Pending</option>
+    </select>
+    <input class="filter-input" type="date" id="fDateFrom" onchange="applyFilters()" placeholder="From"/>
+    <input class="filter-input" type="date" id="fDateTo"   onchange="applyFilters()" placeholder="To"/>
+    <button class="btn btn-ghost" onclick="resetFilters()">✕ Reset</button>
+  </div>
+</div>
+
+<!-- Table -->
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>DATE/TIME</th>
+        <th>INDEX</th>
+        <th>DIR</th>
+        <th>GRADE</th>
+        <th>SCORE</th>
+        <th>MODELS</th>
+        <th>ENTRY</th>
+        <th>SL</th>
+        <th>TARGET</th>
+        <th>R:R</th>
+        <th>OPTIONS</th>
+        <th>ENTRY MET</th>
+        <th>OUTCOME</th>
+        <th>P&L %</th>
+        <th>ACTIONS</th>
+      </tr>
+    </thead>
+    <tbody id="historyBody">
+      <tr><td colspan="15" class="empty-msg">No signals saved yet. Run a scan from the main page.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let signals = JSON.parse(localStorage.getItem('nifty_signals') || '[]');
+// Deduplicate by timestamp+index+direction
+signals = dedupe(signals);
+let filtered = [...signals];
+
+function getBaseUrl() {
+  return document.getElementById('renderUrl').value.trim().replace(/\/$/, '');
+}
+
+function dedupe(arr) {
+  const seen = new Set();
+  return arr.filter(s => {
+    const key = `${s.timestamp}|${s.index}|${s.direction}`;
+    if (seen.has(key)) return false;
+    seen.add(key); return true;
+  });
+}
+
+function applyFilters() {
+  const dir     = document.getElementById('fDir').value;
+  const idx     = document.getElementById('fIndex').value;
+  const grade   = document.getElementById('fGrade').value;
+  const outcome = document.getElementById('fOutcome').value;
+  const from    = document.getElementById('fDateFrom').value;
+  const to      = document.getElementById('fDateTo').value;
+
+  filtered = signals.filter(s => {
+    if (dir && s.direction !== dir) return false;
+    if (idx && s.index !== idx) return false;
+    if (grade && s.grade !== grade) return false;
+    if (outcome) {
+      const oc = s.outcome_result?.outcome || 'PENDING';
+      if (oc !== outcome) return false;
+    }
+    if (from || to) {
+      const d = new Date(s.timestamp).toISOString().slice(0,10);
+      if (from && d < from) return false;
+      if (to   && d > to)   return false;
+    }
+    return true;
+  });
+
+  renderTable();
+  updateStats();
+}
+
+function resetFilters() {
+  ['fDir','fIndex','fGrade','fOutcome'].forEach(id => document.getElementById(id).value = '');
+  ['fDateFrom','fDateTo'].forEach(id => document.getElementById(id).value = '');
+  filtered = [...signals];
+  renderTable(); updateStats();
+}
+
+function renderTable() {
+  const tbody = document.getElementById('historyBody');
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr><td colspan="15" class="empty-msg">No signals match filters.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = filtered.map((s, i) => {
+    const oc     = s.outcome_result?.outcome || 'PENDING';
+    const entMet = s.outcome_result?.entry_met;
+    const pnl    = s.outcome_result?.pnl_pct;
+    const rowCls = oc === 'TARGET_HIT' ? 'target' : oc === 'SL_HIT' ? 'sl_hit' : oc === 'WATCHING' ? 'watching' : 'pending';
+
+    const dt  = new Date(s.timestamp);
+    const ist = new Date(dt.toLocaleString('en-US', {timeZone:'Asia/Kolkata'}));
+    const dtStr = ist.toLocaleDateString('en-IN') + ' ' + ist.toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit'});
+
+    const dirBadge   = `<span class="badge ${s.direction.toLowerCase()}">${s.direction}</span>`;
+    const gradeBadge = `<span class="badge ${s.grade === 'A+ HIGH' ? 'a-high' : 'a-med'}">${s.grade}</span>`;
+
+    const activeModels = (s.models || []).filter(m => m.active).map(m => m.name).join(', ') || '—';
+    const opt = s.options || {};
+    const optStr = `${opt.atm_strike}${opt.option_type} / ${opt.itm_strike}${opt.option_type}`;
+
+    const ocBadge  = oc === 'TARGET_HIT' ? '<span class="badge target">TARGET ✓</span>'
+                   : oc === 'SL_HIT'     ? '<span class="badge sl">SL HIT</span>'
+                   : oc === 'WATCHING'   ? '<span class="badge watch">WATCHING</span>'
+                   : '<span class="badge pending">PENDING</span>';
+
+    const pnlStr = pnl !== undefined && pnl !== null
+      ? `<span style="color:${pnl>=0?'var(--green)':'var(--red)'}">${pnl>=0?'+':''}${pnl}%</span>`
+      : '—';
+
+    const entMetStr = entMet
+      ? `<span style="color:var(--green)">Yes ${s.outcome_result?.entry_met_time ? new Date(s.outcome_result.entry_met_time).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Kolkata'}) : ''}</span>`
+      : `<span style="color:var(--text-dim)">No</span>`;
+
+    return `<tr class="${rowCls}">
+      <td class="mono" style="font-size:0.7rem">${dtStr}</td>
+      <td><strong>${s.index}</strong></td>
+      <td>${dirBadge}</td>
+      <td>${gradeBadge}</td>
+      <td class="mono">${s.total_score}/25</td>
+      <td style="font-size:0.68rem;color:var(--text-dim)">${activeModels}</td>
+      <td class="mono">₹${Number(s.entry).toLocaleString('en-IN')}</td>
+      <td class="mono" style="color:var(--red)">₹${Number(s.sl).toLocaleString('en-IN')}</td>
+      <td class="mono" style="color:var(--green)">₹${Number(s.target_1).toLocaleString('en-IN')}</td>
+      <td class="mono">1:${s.rr_1}</td>
+      <td style="font-size:0.68rem;color:var(--text-dim)">${optStr}</td>
+      <td>${entMetStr}</td>
+      <td>${ocBadge}</td>
+      <td>${pnlStr}</td>
+      <td><button class="rescan-btn" onclick="rescanSignal(${i})" id="rbtn-${i}">⟳ Check</button></td>
+    </tr>`;
+  }).join('');
+}
+
+async function rescanSignal(idx) {
+  const s = filtered[idx];
+  const btn = document.getElementById(`rbtn-${idx}`);
+  btn.disabled = true; btn.textContent = '...';
+
+  try {
+    const body = {
+      index:       s.index,
+      direction:   s.direction,
+      entry:       s.entry,
+      sl:          s.sl,
+      target_1:    s.target_1,
+      signal_time: s.timestamp,
+    };
+    const r = await fetch(getBaseUrl() + '/api/prices', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(body),
+    });
+    const d = await r.json();
+    if (d.outcome) {
+      // Find and update original signal
+      const key = `${s.timestamp}|${s.index}|${s.direction}`;
+      const origIdx = signals.findIndex(sig =>
+        `${sig.timestamp}|${sig.index}|${sig.direction}` === key);
+      if (origIdx !== -1) {
+        signals[origIdx].outcome_result = d.outcome;
+        localStorage.setItem('nifty_signals', JSON.stringify(signals));
+      }
+      filtered[idx].outcome_result = d.outcome;
+      renderTable(); updateStats();
+      showToast(`${s.index} ${s.direction}: ${d.outcome.outcome}`);
+    }
+  } catch(e) {
+    showToast('Error: ' + e.message, true);
+  }
+  btn.disabled = false; btn.textContent = '⟳ Check';
+}
+
+async function rescandAll() {
+  const pending = filtered.filter((s,i) => {
+    const oc = s.outcome_result?.outcome;
+    return !oc || oc === 'PENDING' || oc === 'WATCHING';
+  });
+  showToast(`Rescanning ${pending.length} signal(s)...`);
+  for (let i = 0; i < filtered.length; i++) {
+    const oc = filtered[i].outcome_result?.outcome;
+    if (!oc || oc === 'PENDING' || oc === 'WATCHING') {
+      await rescanSignal(i);
+      await new Promise(r => setTimeout(r, 500));  // rate limit
+    }
+  }
+  showToast('Rescan complete!');
+}
+
+function updateStats() {
+  const all     = filtered;
+  const target  = all.filter(s => s.outcome_result?.outcome === 'TARGET_HIT').length;
+  const slHit   = all.filter(s => s.outcome_result?.outcome === 'SL_HIT').length;
+  const watching= all.filter(s => s.outcome_result?.outcome === 'WATCHING').length;
+  const pending = all.filter(s => !s.outcome_result?.outcome || s.outcome_result.outcome === 'PENDING').length;
+  const decided = target + slHit;
+  const wr      = decided > 0 ? ((target / decided) * 100).toFixed(1) + '%' : '—';
+  const pnls    = all.filter(s => s.outcome_result?.pnl_pct !== undefined && s.outcome_result?.pnl_pct !== null).map(s => s.outcome_result.pnl_pct);
+  const avgPnl  = pnls.length ? (pnls.reduce((a,b) => a+b, 0) / pnls.length).toFixed(2) + '%' : '—';
+
+  document.getElementById('statTotal').textContent   = all.length;
+  document.getElementById('statTarget').textContent  = target;
+  document.getElementById('statSL').textContent      = slHit;
+  document.getElementById('statWR').textContent      = wr;
+  const pnlEl = document.getElementById('statPnl');
+  pnlEl.textContent = avgPnl;
+  if (pnls.length) {
+    const avg = pnls.reduce((a,b) => a+b, 0) / pnls.length;
+    pnlEl.style.color = avg >= 0 ? 'var(--green)' : 'var(--red)';
+  }
+  document.getElementById('statWatch').textContent   = watching;
+  document.getElementById('statPending').textContent = pending;
+}
+
+function exportCSV() {
+  const headers = ['DateTime','Index','Direction','Grade','Score','Models','Entry','SL','Target1','Target2','RR1','RR2','Options','EntryMet','Outcome','PnL%'];
+  const rows = filtered.map(s => {
+    const oc = s.outcome_result || {};
+    const opt = s.options || {};
+    const mods = (s.models||[]).filter(m=>m.active).map(m=>m.name).join('|');
+    return [
+      s.timestamp, s.index, s.direction, s.grade, s.total_score, mods,
+      s.entry, s.sl, s.target_1, s.target_2, s.rr_1, s.rr_2,
+      `${opt.atm_strike}${opt.option_type}/${opt.itm_strike}${opt.option_type}`,
+      oc.entry_met ? 'Y' : 'N', oc.outcome || 'PENDING', oc.pnl_pct || '',
+    ].map(v => `"${v}"`).join(',');
+  });
+  const csv = [headers.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], { type:'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `nifty_signals_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  showToast(`Exported ${filtered.length} rows`);
+}
+
+function clearHistory() {
+  if (!confirm('Clear ALL signal history? This cannot be undone.')) return;
+  localStorage.removeItem('nifty_signals');
+  signals = []; filtered = [];
+  renderTable(); updateStats();
+  showToast('History cleared.');
+}
+
+function showToast(msg, isErr=false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.borderColor = isErr ? 'var(--red)' : 'var(--steel)';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// Init
+renderTable();
+updateStats();
+</script>
+</body>
+</html>

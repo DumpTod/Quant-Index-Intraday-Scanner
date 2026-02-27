@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>⚡ Nifty Intra Scanner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+/* ── Variables ─────────────────────────────────────────────────────── */
+:root {
+  --navy-1:   #0d1b2a;
+  --navy-2:   #1a3d5c;
+  --navy-3:   #24527a;
+  --steel:    #4682B4;
+  --steel-lt: #5b9bd5;
+  --gold:     #f5c842;
+  --gold-dk:  #c9a200;
+  --green:    #22c55e;
+  --green-dk: #16a34a;
+  --red:      #ef4444;
+  --red-dk:   #dc2626;
+  --amber:    #f59e0b;
+  --text:     #e2eaf4;
+  --text-dim: #8ba9c7;
+  --glass:    rgba(255,255,255,0.055);
+  --glass-b:  rgba(255,255,255,0.12);
+  --border:   rgba(255,255,255,0.10);
+  --shadow:   0 8px 32px rgba(0,0,0,0.4);
+}
+
+/* ── Reset & Base ──────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--navy-1);
+  color: var(--text);
+  min-height: 100vh;
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(70,130,180,0.18), transparent),
+    radial-gradient(ellipse 60% 40% at 80% 80%,  rgba(26,61,92,0.3), transparent);
+}
+
+/* ── Header ────────────────────────────────────────────────────────── */
+.header {
+  background: linear-gradient(135deg, var(--navy-2) 0%, var(--navy-3) 60%, var(--steel) 100%);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  position: sticky; top: 0; z-index: 100;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+}
+.header-inner {
+  max-width: 1400px; margin: 0 auto;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 0;
+}
+.brand { display: flex; align-items: center; gap: 14px; }
+.brand-icon { font-size: 2rem; line-height: 1; filter: drop-shadow(0 0 8px #f5c842aa); }
+.brand-title { font-size: 1.45rem; font-weight: 700; letter-spacing: -0.02em; }
+.brand-sub   { font-size: 0.72rem; color: var(--text-dim); font-family: 'Space Mono',monospace; margin-top:2px; letter-spacing:0.05em; }
+.header-actions { display: flex; align-items: center; gap: 12px; }
+.url-input {
+  background: rgba(0,0,0,0.3); border: 1px solid var(--border);
+  border-radius: 8px; padding: 7px 12px; color: var(--text);
+  font-family: 'Space Mono', monospace; font-size: 0.72rem; width: 320px;
+}
+.url-input:focus { outline: none; border-color: var(--steel-lt); }
+.btn {
+  padding: 8px 18px; border-radius: 8px; border: none; cursor: pointer;
+  font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 0.85rem;
+  transition: all 0.18s;
+}
+.btn-primary {
+  background: linear-gradient(135deg, var(--steel), var(--steel-lt));
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(70,130,180,0.4);
+}
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(70,130,180,0.55); }
+.btn-primary:active { transform: translateY(0); }
+.btn-ghost {
+  background: var(--glass); border: 1px solid var(--border);
+  color: var(--text-dim);
+}
+.btn-ghost:hover { background: var(--glass-b); color: var(--text); }
+
+/* ── Market Status Bar ─────────────────────────────────────────────── */
+.status-bar {
+  background: rgba(0,0,0,0.25); border-bottom: 1px solid var(--border);
+  padding: 8px 24px;
+}
+.status-bar-inner {
+  max-width: 1400px; margin: 0 auto;
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+}
+.status-pill {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 0.78rem; color: var(--text-dim);
+}
+.status-dot { width: 7px; height: 7px; border-radius: 50%; }
+.status-dot.green { background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse 2s infinite; }
+.status-dot.red   { background: var(--red); }
+.status-dot.amber { background: var(--amber); }
+@keyframes pulse {
+  0%,100% { opacity:1; } 50% { opacity:0.4; }
+}
+.time-display { font-family: 'Space Mono', monospace; font-size: 0.8rem; color: var(--steel-lt); }
+.scan-status { font-size: 0.78rem; }
+
+/* ── CPR Bar ───────────────────────────────────────────────────────── */
+.cpr-bar {
+  background: var(--glass); border-bottom: 1px solid var(--border);
+  padding: 10px 24px; overflow-x: auto;
+}
+.cpr-bar-inner {
+  max-width: 1400px; margin: 0 auto;
+  display: flex; gap: 32px; align-items: center; min-width: max-content;
+}
+.cpr-group { display: flex; flex-direction: column; gap: 4px; }
+.cpr-label { font-size: 0.65rem; font-family:'Space Mono',monospace; color: var(--text-dim); letter-spacing:0.08em; }
+.cpr-levels { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.cpr-chip {
+  font-size: 0.72rem; font-family: 'Space Mono', monospace;
+  padding: 3px 8px; border-radius: 5px; display: flex; gap: 5px; align-items: center;
+}
+.cpr-chip .lbl { color: var(--text-dim); font-size: 0.65rem; }
+.cpr-chip.pivot { background: rgba(70,130,180,0.18); border: 1px solid rgba(70,130,180,0.3); }
+.cpr-chip.tc    { background: rgba(34,197,94,0.12);  border: 1px solid rgba(34,197,94,0.25); color: var(--green); }
+.cpr-chip.bc    { background: rgba(239,68,68,0.12);  border: 1px solid rgba(239,68,68,0.25); color: var(--red); }
+.cpr-chip.r     { background: rgba(34,197,94,0.07);  border: 1px solid rgba(34,197,94,0.15); color: #86efac; }
+.cpr-chip.s     { background: rgba(239,68,68,0.07);  border: 1px solid rgba(239,68,68,0.15); color: #fca5a5; }
+.cpr-divider { width: 1px; height: 40px; background: var(--border); }
+
+/* ── Main Layout ───────────────────────────────────────────────────── */
+.main {
+  max-width: 1400px; margin: 0 auto; padding: 24px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 24px;
+}
+@media (max-width: 900px) { .main { grid-template-columns: 1fr; } }
+
+/* ── Column headers ────────────────────────────────────────────────── */
+.col-header {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border);
+}
+.col-title { font-size: 1rem; font-weight: 700; letter-spacing: 0.04em; }
+.col-count {
+  font-size: 0.72rem; font-family: 'Space Mono', monospace;
+  padding: 3px 8px; border-radius: 20px; font-weight: 700;
+}
+.buy-col  .col-title { color: var(--green); }
+.buy-col  .col-count { background: rgba(34,197,94,0.15); color: var(--green); }
+.sell-col .col-title { color: var(--red); }
+.sell-col .col-count { background: rgba(239,68,68,0.15); color: var(--red); }
+
+/* ── Signal Card ───────────────────────────────────────────────────── */
+.signal-card {
+  background: var(--glass);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px;
+  margin-bottom: 16px;
+  backdrop-filter: blur(12px);
+  transition: transform 0.18s, box-shadow 0.18s;
+  animation: fadeInUp 0.3s ease;
+}
+.signal-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+@keyframes fadeInUp {
+  from { opacity:0; transform:translateY(10px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+.signal-card.buy  { border-left: 3px solid var(--green); }
+.signal-card.sell { border-left: 3px solid var(--red); }
+
+.card-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 14px; }
+.card-index {
+  display: flex; align-items: center; gap: 8px;
+}
+.index-name { font-size: 1.05rem; font-weight: 700; }
+.fut-tag {
+  font-size: 0.6rem; font-family: 'Space Mono', monospace;
+  padding: 2px 6px; border-radius: 4px;
+  background: rgba(70,130,180,0.2); color: var(--steel-lt);
+  border: 1px solid rgba(70,130,180,0.3);
+}
+.dir-badge {
+  font-size: 0.72rem; font-weight: 700; padding: 4px 12px; border-radius: 20px;
+  font-family: 'Space Mono', monospace; letter-spacing: 0.05em;
+}
+.dir-badge.buy  { background: rgba(34,197,94,0.2);  color: var(--green); border: 1px solid rgba(34,197,94,0.4); }
+.dir-badge.sell { background: rgba(239,68,68,0.2);  color: var(--red);   border: 1px solid rgba(239,68,68,0.4); }
+
+.grade-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.grade-badge {
+  font-size: 0.72rem; font-weight: 700; padding: 4px 12px; border-radius: 6px;
+  font-family: 'Space Mono', monospace;
+}
+.grade-badge.high {
+  background: linear-gradient(135deg, var(--gold-dk), var(--gold));
+  color: var(--navy-1); box-shadow: 0 0 12px rgba(245,200,66,0.35);
+}
+.grade-badge.medium {
+  background: linear-gradient(135deg, var(--steel), var(--steel-lt));
+  color: #fff; box-shadow: 0 0 8px rgba(70,130,180,0.35);
+}
+.score-text { font-size: 0.75rem; color: var(--text-dim); font-family: 'Space Mono', monospace; }
+
+/* Model dots */
+.model-dots { display: flex; gap: 6px; align-items: center; margin-bottom: 14px; }
+.model-dot {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+}
+.dot {
+  width: 30px; height: 30px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.6rem; font-weight: 700; font-family: 'Space Mono', monospace;
+  transition: all 0.2s;
+}
+.dot.active.buy  { background: rgba(34,197,94,0.25); border: 1px solid var(--green); color: var(--green); box-shadow: 0 0 8px rgba(34,197,94,0.3); }
+.dot.active.sell { background: rgba(239,68,68,0.25); border: 1px solid var(--red);   color: var(--red);   box-shadow: 0 0 8px rgba(239,68,68,0.3); }
+.dot.inactive    { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.2); }
+.dot-label { font-size: 0.55rem; color: var(--text-dim); font-family: 'Space Mono', monospace; }
+
+/* Risk table */
+.risk-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 8px; margin-bottom: 14px;
+}
+.risk-item { background: rgba(0,0,0,0.2); border-radius: 8px; padding: 8px; }
+.risk-label { font-size: 0.6rem; color: var(--text-dim); letter-spacing: 0.06em; margin-bottom: 3px; }
+.risk-value { font-size: 0.88rem; font-family: 'Space Mono', monospace; font-weight: 700; }
+.risk-value.green  { color: var(--green); }
+.risk-value.red    { color: var(--red); }
+.risk-value.gold   { color: var(--gold); }
+.risk-value.normal { color: var(--text); }
+
+/* Options */
+.options-row {
+  background: rgba(70,130,180,0.08); border: 1px solid rgba(70,130,180,0.2);
+  border-radius: 8px; padding: 10px; margin-bottom: 12px;
+}
+.options-label { font-size: 0.62rem; color: var(--text-dim); font-family: 'Space Mono', monospace; margin-bottom: 6px; letter-spacing: 0.07em; }
+.options-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.opt-chip {
+  font-size: 0.68rem; font-family: 'Space Mono', monospace;
+  padding: 4px 10px; border-radius: 5px;
+}
+.opt-chip.atm  { background: rgba(70,130,180,0.2); border: 1px solid rgba(70,130,180,0.4); color: var(--steel-lt); }
+.opt-chip.itm  { background: rgba(245,200,66,0.1);  border: 1px solid rgba(245,200,66,0.3); color: var(--gold); }
+
+.card-footer { display: flex; justify-content: space-between; align-items: center; }
+.signal-time { font-size: 0.7rem; color: var(--text-dim); font-family: 'Space Mono', monospace; }
+
+/* ── Empty state ───────────────────────────────────────────────────── */
+.empty-state {
+  text-align: center; padding: 48px 24px;
+  color: var(--text-dim);
+}
+.empty-icon { font-size: 3rem; margin-bottom: 12px; opacity: 0.4; }
+.empty-text { font-size: 0.88rem; }
+
+/* ── Progress bar ──────────────────────────────────────────────────── */
+.progress-wrap { background: rgba(0,0,0,0.3); border-radius: 4px; height: 3px; overflow: hidden; margin: 12px 0; display:none; }
+.progress-bar  { height: 100%; background: linear-gradient(90deg, var(--steel), var(--green)); transition: width 0.4s; border-radius: 4px; }
+
+/* ── History link ──────────────────────────────────────────────────── */
+.footer-bar {
+  text-align: center; padding: 20px; border-top: 1px solid var(--border);
+  margin-top: 12px;
+}
+.footer-bar a {
+  color: var(--steel-lt); text-decoration: none; font-size: 0.85rem;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 20px; border: 1px solid rgba(70,130,180,0.3); border-radius: 8px;
+  transition: all 0.2s;
+}
+.footer-bar a:hover { background: rgba(70,130,180,0.15); border-color: var(--steel); }
+
+/* ── Spinner ───────────────────────────────────────────────────────── */
+.spinner {
+  width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.2);
+  border-top-color: var(--steel-lt); border-radius: 50%;
+  animation: spin 0.8s linear infinite; display: inline-block;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- ── Header ─────────────────────────────────────────────────────────── -->
+<header class="header">
+  <div class="header-inner">
+    <div class="brand">
+      <span class="brand-icon">⚡</span>
+      <div>
+        <div class="brand-title">Nifty Intra Scanner</div>
+        <div class="brand-sub">Morning Trend · Afternoon Momentum — NIFTY & BANKNIFTY Futures</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <input class="url-input" type="text" id="renderUrl"
+        value="https://quant-index-intraday-scanner.onrender.com"
+        placeholder="Render backend URL"/>
+      <button class="btn btn-primary" onclick="triggerScan()">▶ Scan Now</button>
+      <button class="btn btn-ghost" onclick="loadCPRs()">⟳ CPR</button>
+    </div>
+  </div>
+</header>
+
+<!-- ── Status Bar ─────────────────────────────────────────────────────── -->
+<div class="status-bar">
+  <div class="status-bar-inner">
+    <div class="status-pill">
+      <div class="status-dot" id="marketDot"></div>
+      <span id="marketStatus">Checking market...</span>
+    </div>
+    <div class="time-display" id="clockDisplay"></div>
+    <div class="scan-status" id="scanStatus">Ready</div>
+    <div class="progress-wrap" id="progressWrap">
+      <div class="progress-bar" id="progressBar" style="width:0%"></div>
+    </div>
+    <div style="font-size:0.75rem;color:var(--text-dim)">
+      Auto-refresh every 5 min during market hours
+    </div>
+  </div>
+</div>
+
+<!-- ── CPR Bar ────────────────────────────────────────────────────────── -->
+<div class="cpr-bar">
+  <div class="cpr-bar-inner" id="cprBar">
+    <span style="font-size:0.75rem;color:var(--text-dim)">Loading CPR levels...</span>
+  </div>
+</div>
+
+<!-- ── Main ──────────────────────────────────────────────────────────── -->
+<div class="main">
+  <div class="buy-col">
+    <div class="col-header">
+      <span>▲</span>
+      <div class="col-title">BUY SIGNALS</div>
+      <span class="col-count" id="buyCount">0</span>
+    </div>
+    <div id="buyContainer">
+      <div class="empty-state">
+        <div class="empty-icon">📊</div>
+        <div class="empty-text">No BUY signals yet. Click Scan Now.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sell-col">
+    <div class="col-header">
+      <span>▼</span>
+      <div class="col-title">SELL SIGNALS</div>
+      <span class="col-count" id="sellCount">0</span>
+    </div>
+    <div id="sellContainer">
+      <div class="empty-state">
+        <div class="empty-icon">📊</div>
+        <div class="empty-text">No SELL signals yet. Click Scan Now.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="footer-bar">
+  <a href="history.html">📋 Signal History &amp; Track Record →</a>
+</div>
+
+<script>
+// ── State ────────────────────────────────────────────────────────────────────
+let pollTimer   = null;
+let autoTimer   = null;
+let allSignals  = JSON.parse(localStorage.getItem('nifty_signals') || '[]');
+
+function getBaseUrl() {
+  return document.getElementById('renderUrl').value.trim().replace(/\/$/, '');
+}
+
+// ── Clock ────────────────────────────────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  const ist = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+  const pad = n => String(n).padStart(2, '0');
+  document.getElementById('clockDisplay').textContent =
+    `IST ${pad(ist.getHours())}:${pad(ist.getMinutes())}:${pad(ist.getSeconds())}`;
+
+  // Market status
+  const h = ist.getHours(), m = ist.getMinutes();
+  const mins = h * 60 + m;
+  const dot  = document.getElementById('marketDot');
+  const stat = document.getElementById('marketStatus');
+  const day  = ist.getDay();
+
+  if (day === 0 || day === 6) {
+    dot.className = 'status-dot red'; stat.textContent = 'Market Closed (Weekend)';
+  } else if (mins >= 555 && mins <= 915) {
+    dot.className = 'status-dot green'; stat.textContent = 'Market Open';
+  } else if (mins >= 570 && mins < 570) {
+    dot.className = 'status-dot amber'; stat.textContent = 'Pre-Market';
+  } else {
+    dot.className = 'status-dot red'; stat.textContent = 'Market Closed';
+  }
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ── Auto-refresh during market hours ─────────────────────────────────────────
+function scheduleAutoRefresh() {
+  if (autoTimer) clearInterval(autoTimer);
+  autoTimer = setInterval(() => {
+    const now = new Date();
+    const ist = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+    const mins = ist.getHours() * 60 + ist.getMinutes();
+    const day  = ist.getDay();
+    if (day !== 0 && day !== 6 && mins >= 555 && mins <= 915) {
+      triggerScan();
+    }
+  }, 5 * 60 * 1000);
+}
+scheduleAutoRefresh();
+
+// ── CPR ──────────────────────────────────────────────────────────────────────
+async function loadCPRs() {
+  try {
+    const r = await fetch(getBaseUrl() + '/api/cprs');
+    const d = await r.json();
+    renderCPR(d);
+  } catch(e) {
+    document.getElementById('cprBar').innerHTML =
+      `<span style="color:var(--red);font-size:0.75rem">CPR fetch error: ${e.message}</span>`;
+  }
+}
+
+function renderCPR(data) {
+  const bar = document.getElementById('cprBar');
+  let html = '';
+  for (const [idx, cpr] of Object.entries(data)) {
+    if (cpr.error) {
+      html += `<div class="cpr-group"><div class="cpr-label">${idx}</div><span style="color:var(--red);font-size:0.72rem">${cpr.error}</span></div>`;
+    } else {
+      html += `
+      <div class="cpr-group">
+        <div class="cpr-label">${idx} — CPR LEVELS</div>
+        <div class="cpr-levels">
+          <div class="cpr-chip r"><span class="lbl">R2</span>${cpr.r2}</div>
+          <div class="cpr-chip r"><span class="lbl">R1</span>${cpr.r1}</div>
+          <div class="cpr-chip tc"><span class="lbl">TC</span>${cpr.tc}</div>
+          <div class="cpr-chip pivot"><span class="lbl">PP</span>${cpr.pivot}</div>
+          <div class="cpr-chip bc"><span class="lbl">BC</span>${cpr.bc}</div>
+          <div class="cpr-chip s"><span class="lbl">S1</span>${cpr.s1}</div>
+          <div class="cpr-chip s"><span class="lbl">S2</span>${cpr.s2}</div>
+          <div class="cpr-chip" style="color:var(--text-dim);font-size:0.65rem">W:${cpr.cpr_width_pct}%</div>
+        </div>
+      </div>`;
+      if (idx === 'NIFTY') html += '<div class="cpr-divider"></div>';
+    }
+  }
+  bar.innerHTML = html;
+}
+
+// ── Scan ─────────────────────────────────────────────────────────────────────
+async function triggerScan() {
+  const url = getBaseUrl();
+  document.getElementById('scanStatus').innerHTML = '<span class="spinner"></span> Scanning...';
+  document.getElementById('progressWrap').style.display = 'block';
+  document.getElementById('progressBar').style.width = '5%';
+
+  try {
+    await fetch(url + '/api/scan');
+    pollResults(url);
+  } catch(e) {
+    document.getElementById('scanStatus').textContent = 'Error: ' + e.message;
+    document.getElementById('progressWrap').style.display = 'none';
+  }
+}
+
+function pollResults(url) {
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(async () => {
+    try {
+      const r  = await fetch(url + '/api/results');
+      const d  = await r.json();
+      document.getElementById('progressBar').style.width = (d.progress || 0) + '%';
+      document.getElementById('scanStatus').textContent = d.message || 'Scanning...';
+
+      if (!d.running) {
+        clearInterval(pollTimer);
+        document.getElementById('progressWrap').style.display = 'none';
+        renderSignals(d.signals || []);
+        if (d.cprs) renderCPR(d.cprs);
+        saveSignals(d.signals || []);
+        document.getElementById('scanStatus').textContent =
+          `${d.message} — ${d.timestamp ? new Date(d.timestamp).toLocaleTimeString('en-IN', {timeZone:'Asia/Kolkata'}) : ''}`;
+      }
+    } catch(e) {
+      clearInterval(pollTimer);
+      document.getElementById('scanStatus').textContent = 'Poll error: ' + e.message;
+    }
+  }, 1500);
+}
+
+// ── Render signals ────────────────────────────────────────────────────────────
+function renderSignals(signals) {
+  const buyBox  = document.getElementById('buyContainer');
+  const sellBox = document.getElementById('sellContainer');
+  const buys  = signals.filter(s => s.direction === 'BUY');
+  const sells = signals.filter(s => s.direction === 'SELL');
+
+  document.getElementById('buyCount').textContent  = buys.length;
+  document.getElementById('sellCount').textContent = sells.length;
+
+  buyBox.innerHTML  = buys.length  ? buys.map(cardHTML).join('')  : emptyHTML('BUY');
+  sellBox.innerHTML = sells.length ? sells.map(cardHTML).join('') : emptyHTML('SELL');
+}
+
+function emptyHTML(dir) {
+  return `<div class="empty-state">
+    <div class="empty-icon">${dir === 'BUY' ? '📈' : '📉'}</div>
+    <div class="empty-text">No ${dir} signals in this scan.</div>
+  </div>`;
+}
+
+const MODEL_NAMES = ['ORB','VWAP','EMA','MACD','CPR'];
+
+function cardHTML(s) {
+  const dir   = s.direction.toLowerCase();
+  const grade = s.grade === 'A+ HIGH' ? 'high' : 'medium';
+
+  // Model dots
+  const dots = (s.models || MODEL_NAMES.map(n => ({ name:n, active:false }))).map(m => `
+    <div class="model-dot">
+      <div class="dot ${m.active ? 'active ' + dir : 'inactive'}">${m.name.substring(0,3)}</div>
+    </div>`).join('');
+
+  // Options
+  const opt = s.options || {};
+  const optHtml = `
+    <div class="options-row">
+      <div class="options-label">OPTIONS SUGGESTIONS</div>
+      <div class="options-chips">
+        <span class="opt-chip atm">ATM ${opt.atm_strike} ${opt.option_type}</span>
+        <span class="opt-chip itm">ITM ${opt.itm_strike} ${opt.option_type}</span>
+        <span style="font-size:0.6rem;color:var(--text-dim);align-self:center">Lot: ${opt.lot_size}</span>
+      </div>
+    </div>`;
+
+  return `
+  <div class="signal-card ${dir}">
+    <div class="card-top">
+      <div class="card-index">
+        <span class="index-name">${s.index}</span>
+        <span class="fut-tag">FUT</span>
+      </div>
+      <span class="dir-badge ${dir}">${s.direction}</span>
+    </div>
+    <div class="grade-row">
+      <span class="grade-badge ${grade}">${s.grade}</span>
+      <span class="score-text">${s.total_score}/25 pts · ${s.agreeing}/5 models</span>
+    </div>
+    <div class="model-dots">${dots}</div>
+    <div class="risk-grid">
+      <div class="risk-item">
+        <div class="risk-label">ENTRY</div>
+        <div class="risk-value normal">₹${s.entry?.toLocaleString('en-IN')}</div>
+      </div>
+      <div class="risk-item">
+        <div class="risk-label">STOP LOSS</div>
+        <div class="risk-value red">₹${s.sl?.toLocaleString('en-IN')}</div>
+      </div>
+      <div class="risk-item">
+        <div class="risk-label">TARGET 1</div>
+        <div class="risk-value green">₹${s.target_1?.toLocaleString('en-IN')}</div>
+      </div>
+      <div class="risk-item">
+        <div class="risk-label">R:R</div>
+        <div class="risk-value gold">1:${s.rr_1}</div>
+      </div>
+    </div>
+    ${optHtml}
+    <div class="card-footer">
+      <span class="signal-time">⏱ Signal at ${s.signal_time}</span>
+      <span style="font-size:0.65rem;color:var(--text-dim)">T2: ₹${s.target_2?.toLocaleString('en-IN')} (1:${s.rr_2})</span>
+    </div>
+  </div>`;
+}
+
+// ── Save signals to localStorage ──────────────────────────────────────────────
+function saveSignals(newSignals) {
+  if (!newSignals.length) return;
+  const existing = JSON.parse(localStorage.getItem('nifty_signals') || '[]');
+  const now = new Date().toISOString();
+  const toSave = newSignals.map(s => ({ ...s, saved_at: now }));
+  const merged = [...toSave, ...existing].slice(0, 500);  // keep latest 500
+  localStorage.setItem('nifty_signals', JSON.stringify(merged));
+  allSignals = merged;
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+loadCPRs();
+// Show stored signals from last session
+if (allSignals.length) {
+  // Show most recent scan's signals (same saved_at batch)
+  const lastBatch = allSignals[0].saved_at;
+  const latest = allSignals.filter(s => s.saved_at === lastBatch);
+  renderSignals(latest);
+}
+</script>
+</body>
+</html>
